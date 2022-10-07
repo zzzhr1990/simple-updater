@@ -363,7 +363,11 @@ func (mp *master) updateAssets(updateInfo *model.UpdateCollection) bool {
 				mp.warnf("failed to overwrite binary: %s", err)
 				return false
 			}
-			mp.debugf("upgraded assect : %s (%s -> %s)", realFilePath, mAssectVersion.Version, updateSingleAsset.Version)
+			orignVersion := "unknown"
+			if mAssectVersion != nil {
+				orignVersion = mAssectVersion.Version
+			}
+			mp.debugf("upgraded assect : %s (%s -> %s)", realFilePath, orignVersion, updateSingleAsset.Version)
 			mp.runningVersion[fileVersionKey] = &model.VersionInfo{
 				SHA1:    newHashHex,
 				Version: updateSingleAsset.Version,

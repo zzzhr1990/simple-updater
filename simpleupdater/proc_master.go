@@ -519,6 +519,9 @@ func (mp *master) updateMain(updateInfo *model.UpdateCollection) bool {
 }
 
 func (mp *master) fetch() {
+	defer func() {
+		mp.lastCheckTime = time.Now()
+	}()
 	if mp.restarting {
 		return //skip if restarting
 	}
@@ -562,7 +565,6 @@ func (mp *master) fetch() {
 		mp.triggerRestart()
 	}
 	//and keep fetching...
-	mp.lastCheckTime = time.Now()
 
 }
 

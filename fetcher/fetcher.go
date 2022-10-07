@@ -73,7 +73,7 @@ func (f SimpleFetcher) GetUpdateInfo(channel string, name string, currentVersion
 		"program":  name,
 		"version":  currentVersion,
 		"channel":  channel,
-	}).BindJSON(mc).Debug(true).Do()
+	}).BindJSON(mc).Do()
 	if err != nil {
 		return nil, err
 	}

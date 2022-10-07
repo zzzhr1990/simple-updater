@@ -331,8 +331,8 @@ func (mp *master) updateAssets(updateInfo *model.UpdateCollection) bool {
 			}
 
 			newHashHex := hex.EncodeToString(newHash)
-			if newHashHex != updateInfo.Main.SHA1 {
-				mp.warnf("hash mismatch - expected %s, got %s", updateInfo.Main.SHA1, newHashHex)
+			if newHashHex != updateSingleAsset.SHA1 {
+				mp.warnf("hash mismatch - expected %s, got %s", updateSingleAsset.SHA1, newHashHex)
 				return false
 			}
 

@@ -22,8 +22,6 @@ import (
 	"github.com/zzzhr1990/simple-updater/model"
 )
 
-var tmpBinPath = filepath.Join(os.TempDir(), "simpleupdater-"+token()+extension())
-
 // a simpleupdater master process
 type master struct {
 	*Config
@@ -31,6 +29,8 @@ type master struct {
 	slaveCmd            *exec.Cmd
 	slaveExtraFiles     []*os.File
 	binPath             string
+	binDirectory        string
+	binTempDirectory    string
 	binPerms            os.FileMode
 	binHash             []byte
 	restarting          bool
@@ -41,6 +41,7 @@ type master struct {
 	signalledAt         time.Time
 	printCheckUpdate    bool
 	runningVersion      map[string]*model.VersionInfo
+	lastCheckTime       time.Time
 }
 
 func newMaster(config *Config) *master {
@@ -88,10 +89,23 @@ func (mp *master) checkBinary() error {
 		//copy permissions
 		mp.binPerms = info.Mode()
 	}
+
+	//get directory of binary
+	binDirectory := filepath.Dir(binPath)
+	mp.binDirectory = binDirectory
+	tempDirectory := filepath.Join(binDirectory, "_updatetemp")
+	mp.binTempDirectory = tempDirectory
+	os.RemoveAll(tempDirectory)
+	err = os.MkdirAll(tempDirectory, 0755)
+	if err != nil {
+		return fmt.Errorf("failed to create temp directory (%s)", err)
+	}
+	tmpBinPath := filepath.Join(tempDirectory, "simpleupdater-"+token()+extension())
 	f, err := os.Open(binPath)
 	if err != nil {
 		return fmt.Errorf("cannot read binary (%s)", err)
 	}
+
 	//initial hash of file
 	hash := sha1.New()
 	io.Copy(hash, f)
@@ -263,7 +277,11 @@ func (mp *master) updateAssets(updateInfo *model.UpdateCollection) bool {
 			}
 		}
 		if needDoUpdate {
-			tempfile := filepath.Join(os.TempDir(), "simpleupdater-"+token()+".tmp")
+			fileTempName := updateSingleAsset.SHA1
+			if len(fileTempName) < 1 {
+				fileTempName = "simpleupdater-" + token() + ".tmp"
+			}
+			tempfile := filepath.Join(mp.binTempDirectory, fileTempName)
 			mp.debugf("updating assect file %s", realFilePath)
 			reader, err := mp.Config.Fetcher.GetUpdateStream(updateSingleAsset.URL)
 			if err != nil {
@@ -392,6 +410,11 @@ func (mp *master) updateMain(updateInfo *model.UpdateCollection) bool {
 	if closer, ok := reader.(io.Closer); ok {
 		defer closer.Close()
 	}
+	fileTempName := updateInfo.Main.SHA1
+	if len(fileTempName) < 1 {
+		fileTempName = "simpleupdater-" + token() + extension()
+	}
+	tmpBinPath := filepath.Join(mp.binTempDirectory, fileTempName)
 	tmpBin, err := os.OpenFile(tmpBinPath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0666)
 	if err != nil {
 		mp.warnf("failed to open temp binary: %s", err)
@@ -499,6 +522,9 @@ func (mp *master) fetch() {
 		mp.debugf("checking for updates...")
 	}
 
+	if time.Since(mp.lastCheckTime) < time.Second*10 {
+		return
+	}
 	updateInfo, err := mp.Config.Fetcher.GetUpdateInfo(mp.Config.Channel, mp.Config.Name, mp.Config.CurrentVersion)
 	if err != nil {
 		mp.debugf("failed to fetch update info (%s)", err)
@@ -532,6 +558,7 @@ func (mp *master) fetch() {
 		mp.triggerRestart()
 	}
 	//and keep fetching...
+	mp.lastCheckTime = time.Now()
 
 }
 

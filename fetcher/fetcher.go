@@ -59,6 +59,7 @@ func (f fetcher) Fetch() (io.Reader, error) {
 
 type SimpleFetcher struct {
 	//fn func() (io.Reader, error)
+	first bool
 }
 
 func (f SimpleFetcher) GetUpdateInfo(channel string, name string, currentVersion string) (*model.UpdateCollection, error) {
@@ -67,7 +68,11 @@ func (f SimpleFetcher) GetUpdateInfo(channel string, name string, currentVersion
 	updateInfoPrefix := "https://updates.2dland.cn/simple"
 	updateInfoURL := fmt.Sprintf("%s/%s/%s/%s/latest.json", updateInfoPrefix, name, currentPlatform, channel)
 	goutReq := gout.NewWithOpt(gout.WithInsecureSkipVerify(), gout.WithTimeout(time.Minute))
-	fmt.Println("get update info from:", updateInfoURL)
+	if f.first {
+		fmt.Println("get update info from:", updateInfoURL)
+		f.first = false
+	}
+
 	err := goutReq.GET(updateInfoURL).SetQuery(gout.H{
 		"platform": currentPlatform,
 		"program":  name,

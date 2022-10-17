@@ -519,9 +519,7 @@ func (mp *master) updateMain(updateInfo *model.UpdateCollection) bool {
 }
 
 func (mp *master) fetch() {
-	defer func() {
-		mp.lastCheckTime = time.Now()
-	}()
+
 	if mp.restarting {
 		return //skip if restarting
 	}
@@ -532,6 +530,7 @@ func (mp *master) fetch() {
 	if time.Since(mp.lastCheckTime) < time.Second*10 {
 		return
 	}
+	mp.lastCheckTime = time.Now()
 	updateInfo, err := mp.Config.Fetcher.GetUpdateInfo(mp.Config.Channel, mp.Config.Name, mp.Config.CurrentVersion)
 	if err != nil {
 		mp.debugf("failed to fetch update info (%s)", err)
